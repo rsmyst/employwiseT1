@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUsers, deleteUser } from "../services/api";
 import { useAuth } from "../context/useAuth";
+import UserCard from "../components/UserCard";
 
 interface User {
   id: number;
@@ -25,13 +26,28 @@ const Users: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [notification, setNotification] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
   const [animateCards, setAnimateCards] = useState(false);
+
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastUserElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loading) return;
+      if (observer.current) observer.current.disconnect();
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setCurrentPage((prevPage) => prevPage + 1);
+        }
+      });
+      if (node) observer.current.observe(node);
+    },
+    [loading, hasMore]
+  );
 
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -64,12 +80,18 @@ const Users: React.FC = () => {
 
   const fetchUsers = async (page: number) => {
     setLoading(true);
-    setAnimateCards(false);
     try {
       const response: UserResponse = await getUsers(page);
-      setUsers(response.data);
-      setFilteredUsers(response.data);
-      setTotalPages(response.total_pages);
+
+      setUsers((prevUsers) => {
+        // Avoid duplicate users when page is reset
+        if (page === 1) {
+          return [...response.data];
+        }
+        return [...prevUsers, ...response.data];
+      });
+
+      setHasMore(page < response.total_pages);
     } catch (err) {
       setError("Failed to fetch users. Please try again.");
       console.error("Error fetching users:", err);
@@ -93,10 +115,11 @@ const Users: React.FC = () => {
     }
   };
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    // Reset to first page when searching
+    setCurrentPage(1);
+    setUsers([]);
   };
 
   const handleLogout = () => {
@@ -137,80 +160,40 @@ const Users: React.FC = () => {
         type="text"
         placeholder="Search users..."
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={handleSearch}
         className="border p-2 mb-4 w-full"
       />
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : error ? (
-        <p className="text-red-500">{error}</p>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredUsers.map((user) => (
-              <div
-                key={user.id}
-                className={`card ${animateCards ? "animate-fade-in" : ""}`}
-              >
-                <img
-                  src={user.avatar}
-                  alt={user.first_name}
-                  className="w-full"
-                />
-                <div className="p-4">
-                  <h2 className="text-lg font-bold">
-                    {user.first_name} {user.last_name}
-                  </h2>
-                  <p>{user.email}</p>
-                  <div className="flex justify-between mt-4">
-                    <button
-                      onClick={() => handleEdit(user.id)}
-                      className="bg-blue-500 text-white px-4 py-2 rounded"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(user.id)}
-                      className="bg-red-500 text-white px-4 py-2 rounded"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+      {error && <p className="text-red-500">{error}</p>}
 
-          <nav className="flex justify-center mt-4">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 border rounded-l disabled:opacity-50"
-            >
-              Previous
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-4 py-2 border ${
-                  currentPage === page ? "bg-blue-500 text-white" : ""
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 border rounded-r disabled:opacity-50"
-            >
-              Next
-            </button>
-          </nav>
-        </>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {filteredUsers.map((user, index) => {
+          if (filteredUsers.length === index + 1) {
+            return (
+              <div key={user.id} ref={lastUserElementRef}>
+                <UserCard
+                  user={user}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  animate={animateCards}
+                />
+              </div>
+            );
+          } else {
+            return (
+              <UserCard
+                key={user.id}
+                user={user}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                animate={animateCards}
+              />
+            );
+          }
+        })}
+      </div>
+
+      {loading && <p className="text-center mt-4">Loading more users...</p>}
     </div>
   );
 };

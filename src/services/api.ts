@@ -26,8 +26,8 @@ export const login = async (email: string, password: string) => {
 };
 
 // User Services
-export const getUsers = async (page = 1) => {
-  const response = await api.get(`/users?page=${page}`);
+export const getUsers = async (page = 1, per_page = 4) => {
+  const response = await api.get(`/users?page=${page}&per_page=${per_page}`);
   return response.data;
 };
 
