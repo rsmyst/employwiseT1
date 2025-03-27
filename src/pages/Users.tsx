@@ -33,7 +33,6 @@ const Users: React.FC = () => {
     type: "success" | "error";
   } | null>(null);
   const [animateCards, setAnimateCards] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUserElementRef = useCallback(
@@ -58,8 +57,6 @@ const Users: React.FC = () => {
   }, [currentPage]);
 
   useEffect(() => {
-    setIsSearching(true);
-
     if (searchTerm) {
       const filtered = users.filter(
         (user) =>
@@ -71,8 +68,6 @@ const Users: React.FC = () => {
     } else {
       setFilteredUsers(users);
     }
-
-    setIsSearching(false);
   }, [searchTerm, users]);
 
   useEffect(() => {
