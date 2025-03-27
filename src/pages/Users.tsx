@@ -33,6 +33,7 @@ const Users: React.FC = () => {
     type: "success" | "error";
   } | null>(null);
   const [animateCards, setAnimateCards] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUserElementRef = useCallback(
@@ -57,6 +58,8 @@ const Users: React.FC = () => {
   }, [currentPage]);
 
   useEffect(() => {
+    setIsSearching(true);
+
     if (searchTerm) {
       const filtered = users.filter(
         (user) =>
@@ -68,6 +71,8 @@ const Users: React.FC = () => {
     } else {
       setFilteredUsers(users);
     }
+
+    setIsSearching(false);
   }, [searchTerm, users]);
 
   useEffect(() => {
@@ -118,8 +123,11 @@ const Users: React.FC = () => {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     // Reset to first page when searching
-    setCurrentPage(1);
-    setUsers([]);
+    if (e.target.value === "" && filteredUsers.length === 0) {
+      fetchUsers(1);
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const handleLogout = () => {
@@ -161,39 +169,78 @@ const Users: React.FC = () => {
         placeholder="Search users..."
         value={searchTerm}
         onChange={handleSearch}
-        className="border p-2 mb-4 w-full"
+        className="border p-2 mb-4 w-full rounded-md"
       />
 
       {error && <p className="text-red-500">{error}</p>}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredUsers.map((user, index) => {
-          if (filteredUsers.length === index + 1) {
-            return (
-              <div key={user.id} ref={lastUserElementRef}>
+      {loading && users.length === 0 && (
+        <div className="flex items-center justify-center my-8">
+          <div className="spinner border-t-4 border-blue-500 border-solid rounded-full h-12 w-12 animate-spin"></div>
+        </div>
+      )}
+
+      {!loading && searchTerm && filteredUsers.length === 0 && (
+        <div className="text-center py-8">
+          <div className="bg-gray-100 rounded-lg p-6 inline-block animate-fade-in">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h3 className="mt-2 text-lg font-medium text-gray-900">
+              No Results Found
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              No users match your search criteria.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {filteredUsers.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredUsers.map((user, index) => {
+            if (filteredUsers.length === index + 1) {
+              return (
+                <div key={user.id} ref={lastUserElementRef}>
+                  <UserCard
+                    user={user}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    animate={animateCards}
+                  />
+                </div>
+              );
+            } else {
+              return (
                 <UserCard
+                  key={user.id}
                   user={user}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   animate={animateCards}
                 />
-              </div>
-            );
-          } else {
-            return (
-              <UserCard
-                key={user.id}
-                user={user}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                animate={animateCards}
-              />
-            );
-          }
-        })}
-      </div>
+              );
+            }
+          })}
+        </div>
+      )}
 
-      {loading && <p className="text-center mt-4">Loading more users...</p>}
+      {loading && users.length > 0 && (
+        <div className="flex items-center justify-center mt-6">
+          <div className="spinner border-t-4 border-blue-500 border-solid rounded-full h-8 w-8 animate-spin"></div>
+        </div>
+      )}
     </div>
   );
 };

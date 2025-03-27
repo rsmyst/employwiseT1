@@ -23,7 +23,7 @@ const UserCard: React.FC<UserCardProps> = ({
     <div
       className={`card ${
         animate ? "animate-fade-in" : ""
-      } transition-transform transform hover:scale-110 rounded-lg`}
+      } transition-transform transform hover:scale-120 rounded-lg`}
     >
       <img src={user.avatar} alt={user.first_name} className="w-full" />
       <div className="p-4">
