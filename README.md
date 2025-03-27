@@ -102,3 +102,4 @@ src/
 - Used Axios for API calls
 - Implemented client-side search functionality for users
 - Used Tailwind CSS for styling with responsive design
+- Utilized Github Copilot for faster prototyping and development while understanding the workings of the underlying code and debugging errors.
