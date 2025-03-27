@@ -31,6 +31,7 @@ const Users: React.FC = () => {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [animateCards, setAnimateCards] = useState(false);
 
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -39,7 +40,6 @@ const Users: React.FC = () => {
     fetchUsers(currentPage);
   }, [currentPage]);
 
-  // Filter users based on search term
   useEffect(() => {
     if (searchTerm) {
       const filtered = users.filter(
@@ -54,8 +54,17 @@ const Users: React.FC = () => {
     }
   }, [searchTerm, users]);
 
+  useEffect(() => {
+    if (users.length > 0) {
+      setTimeout(() => {
+        setAnimateCards(true);
+      }, 100);
+    }
+  }, [users]);
+
   const fetchUsers = async (page: number) => {
     setLoading(true);
+    setAnimateCards(false);
     try {
       const response: UserResponse = await getUsers(page);
       setUsers(response.data);
@@ -103,126 +112,103 @@ const Users: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">User Management</h1>
         <button
           onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded"
+          className="bg-red-500 text-white px-4 py-2 rounded"
         >
-          Log Out
+          Logout
         </button>
       </div>
 
-      {/* Search input */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {/* Notification */}
       {notification && (
         <div
-          className={`mb-4 p-3 rounded-md ${
-            notification.type === "success"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
+          className={`alert ${
+            notification.type === "success" ? "alert-success" : "alert-error"
           }`}
         >
           {notification.message}
         </div>
       )}
 
-      {/* Error message */}
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
-          {error}
-        </div>
-      )}
+      <input
+        type="text"
+        placeholder="Search users..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="border p-2 mb-4 w-full"
+      />
 
-      {/* Loading state */}
       {loading ? (
-        <div className="text-center py-10">
-          <div className="spinner border-t-4 border-blue-500 border-solid rounded-full h-12 w-12 mx-auto animate-spin"></div>
-          <p className="mt-2">Loading users...</p>
-        </div>
+        <p>Loading...</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
       ) : (
         <>
-          {/* User cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredUsers.map((user) => (
               <div
                 key={user.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden"
+                className={`card ${animateCards ? "animate-fade-in" : ""}`}
               >
+                <img
+                  src={user.avatar}
+                  alt={user.first_name}
+                  className="w-full"
+                />
                 <div className="p-4">
-                  <img
-                    src={user.avatar}
-                    alt={`${user.first_name} ${user.last_name}`}
-                    className="w-24 h-24 rounded-full mx-auto mb-4"
-                  />
-                  <h2 className="text-xl font-semibold text-center">{`${user.first_name} ${user.last_name}`}</h2>
-                  <p className="text-gray-600 text-center">{user.email}</p>
-                </div>
-                <div className="flex border-t border-gray-200">
-                  <button
-                    onClick={() => handleEdit(user.id)}
-                    className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(user.id)}
-                    className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium text-sm"
-                  >
-                    Delete
-                  </button>
+                  <h2 className="text-lg font-bold">
+                    {user.first_name} {user.last_name}
+                  </h2>
+                  <p>{user.email}</p>
+                  <div className="flex justify-between mt-4">
+                    <button
+                      onClick={() => handleEdit(user.id)}
+                      className="bg-blue-500 text-white px-4 py-2 rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(user.id)}
+                      className="bg-red-500 text-white px-4 py-2 rounded"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Pagination */}
-          <div className="flex justify-center mt-8">
-            <nav className="inline-flex rounded-md shadow">
+          <nav className="flex justify-center mt-4">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border rounded-l disabled:opacity-50"
+            >
+              Previous
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-2 rounded-l-md border border-gray-300 bg-white text-gray-700 disabled:bg-gray-100 disabled:text-gray-400"
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`px-4 py-2 border ${
+                  currentPage === page ? "bg-blue-500 text-white" : ""
+                }`}
               >
-                Previous
+                {page}
               </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`px-3 py-2 border border-gray-300 ${
-                      currentPage === page
-                        ? "bg-blue-500 text-white"
-                        : "bg-white text-gray-700"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 rounded-r-md border border-gray-300 bg-white text-gray-700 disabled:bg-gray-100 disabled:text-gray-400"
-              >
-                Next
-              </button>
-            </nav>
-          </div>
+            ))}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 border rounded-r disabled:opacity-50"
+            >
+              Next
+            </button>
+          </nav>
         </>
       )}
     </div>
